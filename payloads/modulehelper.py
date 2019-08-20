@@ -3,7 +3,6 @@ import base64
 
 from modules import shell_exec
 from modules import cat
-from modules import ipconfig
 from modules import ls
 from modules import ps
 from modules import sysinfo
@@ -11,7 +10,7 @@ from modules import shell
 
 from core.color import color
 
-MODULES = ['shell_exec', 'cat', 'ipconfig', 'ls', 'ps', 'sysinfo', 'shell']
+MODULES = ['shell_exec', 'cat', 'ls', 'ps', 'sysinfo', 'shell']
 
 
 def ListModules():

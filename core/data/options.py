@@ -22,6 +22,8 @@ def ShowOptions():
             ('MAX_CONN', str(viewbag.MAX_CONN)),
             ('MESSAGE_LENGTH_SHOW', str(viewbag.MESSAGE_LENGTH_SHOW)),
             ('ENVIRONMENT_FOLDER', viewbag.ENVIRONMENT_FOLDER),
-            ('IMPLANTS CONNECTED', str(len(viewbag.all_connections)))]
+            ('IMPLANTS CONNECTED', str(len(viewbag.all_connections))),
+            ('AUTOSTART_TCP', str(viewbag.AUTOSTART_TCP)),
+            ('NOTIFY_CONNECTION', str(viewbag.NOTIFY_CONNECTION))]
 
     return "\n" + color.ReturnTabulate(opts, ['Option', 'Value'], "simple") + "\n"

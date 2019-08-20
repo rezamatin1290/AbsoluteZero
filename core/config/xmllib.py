@@ -93,6 +93,6 @@ def load():
                     else:
                         viewbag.AUTOSTART_TCP = False
                 counter += 1
-        print color.ReturnSuccess('Configuration file loaded.\n')
+            print color.ReturnSuccess('Configuration file loaded.\n')
     except Exception, e:
         print color.ReturnError('Error parsing the configuration: %s' % str(e))

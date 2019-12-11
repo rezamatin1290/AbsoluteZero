@@ -7,7 +7,7 @@ from core.config import xmllib
 
 def printBanner():
     color.ClearConsole()
-    print header.Banner(config.VERSION)
+    print (header.Banner(config.VERSION))
 
 
 def loadConfiguration():

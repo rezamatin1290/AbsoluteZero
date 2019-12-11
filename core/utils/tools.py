@@ -55,7 +55,7 @@ def GetUniqueHashFromString(string_):
 
 def Confirm(prompt):
     sys.stdout.write(color.ReturnQuestion('%s (Y/n): ' % prompt))
-    choose = raw_input('')
+    choose = input('')
     if choose == 'Y' or choose == 'y':
         return True
     else:

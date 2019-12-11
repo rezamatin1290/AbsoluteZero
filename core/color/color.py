@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
-from tabulate import tabulate
-from colorama import Fore, Back, Style, init
+# from tabulate import tabulate
+# from colorama import Fore, Back, Style, init
 
 
 class color:
@@ -19,30 +19,31 @@ class color:
         BOLD = '\033[1m'
         UNDERLINE = '\033[4m'
         END = '\033[0m'
-    else:
-        PURPLE = Fore.MAGENTA
-        CYAN = Fore.CYAN
-        DARKCYAN = ''  # Unsupported
-        BLUE = Fore.BLUE
-        GREEN = Fore.GREEN
-        YELLOW = Fore.YELLOW
-        RED = Fore.RED
-        BOLD = Style.BRIGHT
-        UNDERLINE = ''  # Unsupported
-        END = Style.RESET_ALL
+    # else:
+    #     PURPLE = Fore.MAGENTA
+    #     CYAN = Fore.CYAN
+    #     DARKCYAN = ''  # Unsupported
+    #     BLUE = Fore.BLUE
+    #     GREEN = Fore.GREEN
+    #     YELLOW = Fore.YELLOW
+    #     RED = Fore.RED
+    #     BOLD = Style.BRIGHT
+    #     UNDERLINE = ''  # Unsupported
+    #     END = Style.RESET_ALL
 
 
 def PrintTabulate(list_c, headr, style):
-    print tabulate(list_c, headers=headr, tablefmt=style)
-
+    # print tabulate(list_c, headers=headr, tablefmt=style)
+    print(list_c, headr, style)
 
 def ReturnTabulate(list_c, headr, style):
-    return tabulate(list_c, headers=headr, tablefmt=style)
+    # return tabulate(list_c, headers=headr, tablefmt=style)
+    print(list_c, headr, style)
 
 
 def ReturnInfo(string):
     return color.BLUE + color.BOLD + '[*] ' + color.END + string
-
+    
 
 def ReturnError(string):
     return color.RED + color.BOLD + '[-] ' + color.END + string

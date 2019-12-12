@@ -86,9 +86,3 @@ def ReturnConsole(string):
 
 def ReturnImplantConsole(string):
     return color.END + color.UNDERLINE + color.BOLD + string + color.END + color.BOLD + color.BLUE + ' >> ' + color.END
-
-
-# reza = """
-
-# ````````````````````````````````````
-# """

@@ -3,10 +3,10 @@ import os
 import random
 import string
 import sys
-from passlib.hash import pbkdf2_sha256
+# from passlib.hash import pbkdf2_sha256
 from datetime import datetime
 
-from core.color import color
+# from core.color import color
 
 
 def GetStartupPath(fname):
